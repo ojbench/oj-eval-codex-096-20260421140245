@@ -1,31 +1,20 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Node {
-    int val;
-    Node* left;
-    Node* right;
-    Node(int v) : val(v), left(nullptr), right(nullptr) {}
-};
-
-Node* buildTree(const vector<int>& pre, int& idx) {
-    if (idx >= (int)pre.size()) return nullptr;
+// Parse the expanded preorder directly and record parent/depth
+static void parse_and_record(const vector<int>& pre, int& idx, int parentVal, int depth,
+                             vector<int>& parent, vector<int>& dep) {
+    if (idx >= (int)pre.size()) return;
     int v = pre[idx++];
-    if (v == -1) return nullptr;
-    Node* root = new Node(v);
-    root->left = buildTree(pre, idx);
-    root->right = buildTree(pre, idx);
-    return root;
-}
-
-void dfs(Node* node, int parentVal, int depth,
-         unordered_map<int,int>& parent,
-         unordered_map<int,int>& dep) {
-    if (!node) return;
-    parent[node->val] = parentVal;
-    dep[node->val] = depth;
-    dfs(node->left, node->val, depth + 1, parent, dep);
-    dfs(node->right, node->val, depth + 1, parent, dep);
+    if (v == -1) return; // null node
+    if (v >= 0 && v < (int)parent.size()) {
+        parent[v] = parentVal;
+        dep[v] = depth;
+    }
+    // left subtree
+    parse_and_record(pre, idx, v, depth + 1, parent, dep);
+    // right subtree
+    parse_and_record(pre, idx, v, depth + 1, parent, dep);
 }
 
 int main() {
@@ -47,27 +36,28 @@ int main() {
     int t;
     while (cin >> t) pre.push_back(t);
 
-    int idx = 0;
-    Node* root = buildTree(pre, idx);
+    // Value range is 1..1000; use arrays for speed and to avoid allocations
+    vector<int> parentArr(1001, INT_MIN);
+    vector<int> depArr(1001, INT_MIN);
 
-    unordered_map<int,int> parent;
-    unordered_map<int,int> dep;
-    dfs(root, -1, 0, parent, dep);
+    int idx = 0;
+    parse_and_record(pre, idx, -1, 0, parentArr, depArr);
 
     for (auto [x, y] : queries) {
-        auto itx = dep.find(x);
-        auto ity = dep.find(y);
-        if (itx == dep.end() || ity == dep.end()) {
+        if (x < 0 || x >= (int)parentArr.size() || y < 0 || y >= (int)parentArr.size()) {
             cout << 0 << '\n';
             continue;
         }
-        int dx = itx->second;
-        int dy = ity->second;
-        int px = parent[x];
-        int py = parent[y];
+        if (depArr[x] == INT_MIN || depArr[y] == INT_MIN) {
+            cout << 0 << '\n';
+            continue;
+        }
+        int dx = depArr[x];
+        int dy = depArr[y];
+        int px = parentArr[x];
+        int py = parentArr[y];
         cout << ((dx == dy && px != py) ? 1 : 0) << '\n';
     }
 
     return 0;
 }
-
